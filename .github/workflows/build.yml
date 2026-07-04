@@ -21,8 +21,9 @@ jobs:
 
       - name: Build
         run: |
-          gcc -O2 -Wall -o whylag.exe whylag.c whylag_core.c -ltdh -ladvapi32
-          gcc -O2 -Wall -o whylag-gui.exe whylag_gui.c whylag_core.c -ltdh -ladvapi32 -lcomctl32 -lcomdlg32 -lgdi32 -luser32 -mwindows
+          windres whylag.rc -O coff -o whylag_res.o
+          gcc -O2 -Wall -o whylag.exe whylag.c whylag_core.c -ltdh -ladvapi32 -lshell32
+          gcc -O2 -Wall -o whylag-gui.exe whylag_gui.c whylag_gui_theme.c whylag_help.c whylag_detail.c whylag_core.c whylag_res.o -ltdh -ladvapi32 -lcomctl32 -lcomdlg32 -lgdi32 -luser32 -ldwmapi -luxtheme -lshell32 -mwindows
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

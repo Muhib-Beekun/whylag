@@ -2,8 +2,15 @@
 *.exe
 *.obj
 *.o
+whylag-gui-v*.exe
+whylag-gui-new.exe
+whylag_res.o
 output.txt
 errors.txt
+
+# sample exports (local captures)
+*-report.csv
+whylag-report.csv
 
 # local agent/session scratch (not for publish)
 .temp/

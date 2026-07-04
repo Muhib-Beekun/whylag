@@ -12,6 +12,16 @@
 
 int main(int argc, char **argv)
 {
+    if (argc >= 4 && strcmp(argv[1], "compare") == 0) {
+        char report[4096];
+        if (whylag_compare_csv(argv[2], argv[3], report, sizeof(report)) != 0) {
+            fprintf(stderr, "whylag: could not compare '%s' and '%s'\n", argv[2], argv[3]);
+            return 1;
+        }
+        fputs(report, stdout);
+        return 0;
+    }
+
     WhyLagOptions opts = {0};
     opts.duration = 10;
     opts.interval = 5;
