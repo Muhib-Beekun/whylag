@@ -1,45 +1,45 @@
-# lagmon
+# whylag
 
-A lightweight, single-binary DPC/ISR latency monitor for Windows. No installation, no unsigned drivers, no dependencies.
+**Find out why your Windows system is lagging.**
 
-**lagmon** captures kernel Deferred Procedure Call (DPC) and Interrupt Service Routine (ISR) execution times in real-time using Event Tracing for Windows (ETW), attributes them to specific driver modules, and tells you exactly which drivers are causing system latency.
+A single-binary diagnostic tool that traces kernel-level latency events and tells you which drivers are responsible. No install, no custom kernel driver — just run it elevated from a terminal.
 
-## Why?
+## The problem this solves
 
-The standard tool for this (LatencyMon) requires an unsigned kernel driver that modern Windows blocks with Secure Boot / HVCI. The alternative (xperf/WPA) requires installing the Windows ADK and has a steep learning curve.
+Intermittent system lag is maddening. Audio glitches, mouse stutter, UI hitches — they come and go, and Task Manager shows nothing useful. The cause is usually buried in the kernel: a driver holding the CPU too long during an interrupt (ISR) or deferred callback (DPC), or a process triggering hard page faults that stall everything.
 
-lagmon needs nothing but an admin prompt. It's a single .exe you can run from anywhere.
+whylag was built while chasing exactly that — audio dropouts, mouse lag, and random stutters on a multi-GPU workstation. The goal is simple: when things feel wrong, run whylag, see which driver spiked, and know where to look.
 
 ## What it measures
 
-| Metric | Why it matters |
-|--------|----------------|
-| **DPC execution time per driver** | DPCs that run too long block the CPU from servicing audio buffers, causing dropouts |
-| **ISR execution time per driver** | ISRs run at the highest priority; long ISRs block everything else |
-| **Hard page faults per process** | Disk fetches during playback cause multi-millisecond stalls |
+| Signal | What it means |
+|--------|---------------|
+| **DPC latency by driver** | Deferred work scheduled by interrupts. Long DPCs block the CPU from servicing audio buffers and input. |
+| **ISR latency by driver** | Immediate interrupt handlers. Long ISRs block everything at the highest priority. |
+| **Hard page faults by process** | Memory fetched from disk mid-operation. Causes multi-millisecond stalls. |
 
 ## Quick start
 
 ```
-lagmon.exe            # 10-second sample, print report
-lagmon.exe 30         # 30-second sample
-lagmon.exe -c         # continuous until Ctrl+C
-lagmon.exe -c -i 10   # continuous, snapshot every 10 seconds
+whylag.exe            # 10-second sample, print report
+whylag.exe 30         # 30-second sample
+whylag.exe -c         # continuous until Ctrl+C
+whylag.exe -c -i 10   # continuous, snapshot every 10 seconds
 ```
 
-Must be run as **Administrator** (ETW kernel tracing requires elevation).
+Requires **Administrator** (ETW kernel tracing needs elevation).
 
 ## Example output
 
 ```
-lagmon 0.1.0 — DPC/ISR latency monitor
+whylag 0.1.0 — find out why your system is lagging
 Sampling for 10 seconds (Ctrl+C to stop early)...
 
 [+] 229 kernel modules loaded
 [+] Tracing active
 
 ============================================================
-  LAGMON REPORT  (10.0 seconds sampled)
+  WHYLAG REPORT  (10.0 seconds sampled)
 ============================================================
   Events: 192290 total | DPC: 77720 | ISR: 5060 | PageFaults: 7
 
@@ -48,8 +48,6 @@ Sampling for 10 seconds (Ctrl+C to stop early)...
   HDAudBus.sys                       85       546        18    12.1%
   Wdf01000.sys                    17759       323         0    21.3%
   ntoskrnl.exe                    59209       184         0    61.7%
-  tcpip.sys                           1        56        56     0.1%
-  nvlddmkm.sys                      16        18        13     2.1%
 
   DRIVER (ISR)                    Count   Max(us)   Avg(us)   Total%
   ------------                    -----   -------   -------   ------
@@ -59,65 +57,58 @@ Sampling for 10 seconds (Ctrl+C to stop early)...
   VERDICT: [WARN] Moderate latency — may cause occasional glitches.
     Worst DPC: 546 us (HDAudBus.sys)
     Worst ISR: 1483 us (dxgkrnl.sys)
-    Thresholds: DPC <1000/<5000/>5000 us | ISR <500/<2000/>2000 us
 ============================================================
 ```
 
+## How to use it for root-cause analysis
+
+1. **Baseline when things feel fine** — `whylag 30` and save the output.
+2. **Capture during a bad period** — run `whylag -c -i 10` while audio/mouse/UI is stuttering.
+3. **Compare the reports** — the driver that appears in the bad capture but not the baseline (or with much higher max times) is your suspect.
+4. **Fix the driver** — update, rollback, disable a feature, or adjust power settings (see table below).
+
 ## Interpreting results
 
-### Verdict thresholds
-
-| Level | DPC | ISR | Meaning |
-|-------|-----|-----|---------|
+| Verdict | DPC max | ISR max | Typical impact |
+|---------|---------|---------|----------------|
 | **OK** | < 1000 µs | < 500 µs | Fine for real-time audio at any buffer size |
-| **WARN** | < 5000 µs | < 2000 µs | May glitch at small buffer sizes (< 256 samples) |
-| **BAD** | > 5000 µs | > 2000 µs | Will cause audible dropouts, game stuttering |
+| **WARN** | < 5000 µs | < 2000 µs | May glitch at small audio buffers (< 256 samples) |
+| **BAD** | > 5000 µs | > 2000 µs | Audible dropouts, mouse stutter, UI hitches |
 
-### Common offenders and fixes
+## Common drivers and what to try
 
-| Driver | What it is | Typical fix |
-|--------|-----------|-------------|
-| `nvlddmkm.sys` | NVIDIA GPU driver | Update driver; disable GPU monitoring overlays |
-| `dxgkrnl.sys` | DirectX graphics kernel | GPU driver update; reduce display count |
-| `HDAudBus.sys` | HD Audio bus | Update audio driver; check for IRQ conflicts |
-| `tcpip.sys` | TCP/IP stack | Disable RSS/TCP offloading; update NIC driver |
-| `CLASSPNP.SYS` | Storage class driver | Check disk health; update storage drivers |
-| `ndis.sys` | Network stack | Update NIC driver; disable power management on NIC |
-| `storport.sys` | Storage port driver | Check disk health; disable write caching if SSD |
-| `USBPORT.sys` | USB controller | Disable USB selective suspend; update chipset drivers |
-| `Wdf01000.sys` | WDF framework | Usually benign; indicates a WDF-based driver is busy |
-
-## Building from source
-
-Requires a C compiler (GCC/MinGW or MSVC).
-
-```bash
-# MinGW
-gcc -O2 -o lagmon.exe lagmon.c -ltdh -ladvapi32
-
-# MSVC
-cl /O2 lagmon.c advapi32.lib tdh.lib
-```
+| Driver | Likely hardware | Things to try |
+|--------|----------------|---------------|
+| `nvlddmkm.sys` | NVIDIA GPU | Update/rollback driver; disable monitoring overlays |
+| `dxgkrnl.sys` | Display / GPU | Update GPU driver; reduce connected displays |
+| `HDAudBus.sys` | Audio | Update audio driver; check for IRQ conflicts |
+| `tcpip.sys` / `ndis.sys` | Network | Update NIC driver; disable NIC power saving |
+| `CLASSPNP.SYS` / `storport.sys` | Storage | Check disk health; update storage drivers |
+| `USBPORT.sys` | USB | Disable USB selective suspend; update chipset drivers |
 
 ## How it works
 
-1. **ETW kernel trace**: Starts a system trace session with `EVENT_TRACE_FLAG_DPC | EVENT_TRACE_FLAG_INTERRUPT | EVENT_TRACE_FLAG_MEMORY_HARD_FAULTS`
-2. **Real-time consumption**: A consumer thread receives events via `ProcessTrace` in real-time mode with QPC timestamps
-3. **Address resolution**: Maps DPC/ISR routine addresses to driver names using `NtQuerySystemInformation(SystemModuleInformation)` — no kernel driver needed
-4. **Timing**: Each DPC/ISR completion event carries its own start timestamp; delta = event_time - initial_time
+whylag uses **Event Tracing for Windows (ETW)** — a documented, built-in Windows API for kernel telemetry:
 
-This is fundamentally the same data source that LatencyMon and xperf use (ETW NT Kernel Logger), but without requiring an unsigned driver for address resolution.
+1. Starts a system trace session with DPC, interrupt, and hard-fault flags
+2. Consumes events in real-time with high-resolution QPC timestamps
+3. Resolves routine addresses to driver names via `NtQuerySystemInformation`
+4. Reports per-driver max/avg execution times and a pass/fail verdict
 
-## Requirements
+No custom kernel driver is installed. Everything runs in user mode using public Windows APIs.
 
-- Windows 8 or later (uses `EVENT_TRACE_SYSTEM_LOGGER_MODE`)
-- Administrator privileges
-- x64 (could be adapted for ARM64)
+## Building
+
+Requires GCC (MinGW) or MSVC on Windows 8+.
+
+```bash
+gcc -O2 -o whylag.exe whylag.c -ltdh -ladvapi32
+```
 
 ## Options
 
 ```
-lagmon [OPTIONS] [DURATION]
+whylag [OPTIONS] [DURATION]
 
   DURATION               Seconds to sample (default: 10)
   -c, --continuous       Run until Ctrl+C
@@ -127,6 +118,12 @@ lagmon [OPTIONS] [DURATION]
   -v, --version          Show version
 ```
 
+## Scope
+
+whylag is a **diagnostic tool**, not a fixer. It tells you *what* is causing latency and *which driver* is responsible. Fixing it is up to you — driver updates, hardware changes, power plan tweaks, or disabling specific features.
+
+It does not modify your system, install services, or persist anything after exit.
+
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).

@@ -1,18 +1,18 @@
 /*
- * lagmon - Lightweight DPC/ISR latency monitor for Windows
- * https://github.com/nicobailon/lagmon
+ * whylag - Find out why your system is lagging
+ * https://github.com/Muhib-Beekun/whylag
  *
- * Single-binary, no-install, no-driver latency diagnostics.
+ * Single-binary, no-install, no-driver latency diagnostics for Windows.
  * Uses ETW to capture kernel DPC/ISR events in real-time and attributes
  * them to driver modules via NtQuerySystemInformation.
  *
  * Requires: Windows 8+ and Administrator privileges.
- * Build:    gcc -O2 -o lagmon.exe lagmon.c -ltdh -ladvapi32
+ * Build:    gcc -O2 -o whylag.exe whylag.c -ltdh -ladvapi32
  *
  * MIT License — see LICENSE file.
  */
 
-#define LAGMON_VERSION "0.1.0"
+#define WHYLAG_VERSION "0.1.0"
 
 #define _WIN32_WINNT 0x0602
 #define INITGUID
@@ -79,7 +79,7 @@ DEFINE_GUID(PageFaultGuid,
 #define EVENT_TRACE_SYSTEM_LOGGER_MODE 0x02000000
 #endif
 
-#define SESSION_NAME L"LagmonTrace"
+#define SESSION_NAME L"WhyLagTrace"
 
 /* ================================================================
  * Data structures
@@ -437,7 +437,7 @@ static void print_report(double elapsed_sec, int is_interval)
     printf("\n");
     if (!is_interval) {
         printf("============================================================\n");
-        printf("  LAGMON REPORT  (%.1f seconds sampled)\n", elapsed_sec);
+        printf("  WHYLAG REPORT  (%.1f seconds sampled)\n", elapsed_sec);
         printf("============================================================\n");
     } else {
         printf("--- snapshot at %.0fs ", elapsed_sec);
@@ -562,8 +562,8 @@ static void sigint_handler(int sig) { (void)sig; g_running = 0; }
 
 static void print_usage(void)
 {
-    printf("lagmon %s — DPC/ISR latency monitor (no driver required)\n\n", LAGMON_VERSION);
-    printf("Usage: lagmon [OPTIONS] [DURATION]\n\n");
+    printf("whylag %s — find out why your system is lagging\n\n", WHYLAG_VERSION);
+    printf("Usage: whylag [OPTIONS] [DURATION]\n\n");
     printf("Options:\n");
     printf("  -c, --continuous     Run until Ctrl+C (ignore duration)\n");
     printf("  -i, --interval SEC   Report interval in continuous mode (default: 5)\n");
@@ -571,10 +571,10 @@ static void print_usage(void)
     printf("  -h, --help           Show this help\n");
     printf("  -v, --version        Show version\n\n");
     printf("Examples:\n");
-    printf("  lagmon               Sample for 10 seconds, print report\n");
-    printf("  lagmon 30            Sample for 30 seconds\n");
-    printf("  lagmon -c            Monitor continuously until Ctrl+C\n");
-    printf("  lagmon -c -i 10      Continuous, snapshot every 10 seconds\n\n");
+    printf("  whylag               Sample for 10 seconds, print report\n");
+    printf("  whylag 30            Sample for 30 seconds\n");
+    printf("  whylag -c            Monitor continuously until Ctrl+C\n");
+    printf("  whylag -c -i 10      Continuous, snapshot every 10 seconds\n\n");
     printf("Must be run as Administrator (ETW kernel tracing requires it).\n");
 }
 
@@ -590,7 +590,7 @@ int main(int argc, char **argv)
             print_usage(); return 0;
         }
         if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
-            printf("lagmon %s\n", LAGMON_VERSION); return 0;
+            printf("whylag %s\n", WHYLAG_VERSION); return 0;
         }
         if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--continuous") == 0) {
             continuous = 1; continue;
@@ -607,7 +607,7 @@ int main(int argc, char **argv)
         if (d > 0) duration = d;
     }
 
-    printf("lagmon %s — DPC/ISR latency monitor\n", LAGMON_VERSION);
+    printf("whylag %s — find out why your system is lagging\n", WHYLAG_VERSION);
     if (continuous)
         printf("Continuous mode (Ctrl+C to stop, reporting every %ds)\n\n", interval);
     else
