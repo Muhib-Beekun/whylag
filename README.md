@@ -1,5 +1,7 @@
 # whylag
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 <p align="center">
   <img src="docs/whylag-cover.jpg" alt="whylag - Windows kernel latency diagnostic" width="720">
 </p>
@@ -210,4 +212,4 @@ See [SECURITY.md](SECURITY.md), [CHANGELOG.md](CHANGELOG.md), and [CONTRIBUTING.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT License. Copyright (c) 2026 Muhib Beekun. See [LICENSE](LICENSE) for the full text.

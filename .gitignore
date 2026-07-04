@@ -16,3 +16,5 @@ tests/output*.txt
 # local agent/session scratch (not for publish)
 .temp/
 .cursor/
+node_modules/
+package-lock.json
