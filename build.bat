@@ -81,7 +81,7 @@ if not exist "!WINDRES!" set "WINDRES=windres"
 if errorlevel 1 exit /b 1
 
 echo Building whylag-gui.exe ...
-"!GCC!" -O2 -Wall -o ".temp\build\whylag-gui.exe" whylag_gui.c whylag_gui_theme.c whylag_help.c whylag_detail.c whylag_core.c ".temp\build\whylag_res.o" -ltdh -ladvapi32 -lcomctl32 -lcomdlg32 -lgdi32 -luser32 -ldwmapi -luxtheme -lshell32 -mwindows
+"!GCC!" -O2 -Wall -o ".temp\build\whylag-gui.exe" whylag_gui.c whylag_gui_theme.c whylag_help.c whylag_detail.c whylag_settings_dlg.c whylag_core.c ".temp\build\whylag_res.o" -ltdh -ladvapi32 -lcomctl32 -lcomdlg32 -lgdi32 -luser32 -ldwmapi -luxtheme -lshell32 -mwindows
 if errorlevel 1 exit /b 1
 
 copy /Y ".temp\build\whylag-gui.exe" "whylag-gui.exe" >nul 2>&1

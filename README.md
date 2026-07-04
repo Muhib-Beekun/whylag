@@ -135,8 +135,25 @@ Manual build:
 ```bat
 gcc -O2 -Wall -o whylag.exe whylag.c whylag_core.c -ltdh -ladvapi32 -lshell32
 windres whylag.rc -O coff -o whylag_res.o
-gcc -O2 -Wall -o whylag-gui.exe whylag_gui.c whylag_gui_theme.c whylag_help.c whylag_detail.c whylag_core.c whylag_res.o -ltdh -ladvapi32 -lcomctl32 -lcomdlg32 -lgdi32 -luser32 -ldwmapi -luxtheme -lshell32 -mwindows
+gcc -O2 -Wall -o whylag-gui.exe whylag_gui.c whylag_gui_theme.c whylag_help.c whylag_detail.c whylag_settings_dlg.c whylag_core.c whylag_res.o -ltdh -ladvapi32 -lcomctl32 -lcomdlg32 -lgdi32 -luser32 -ldwmapi -luxtheme -lshell32 -mwindows
 ```
+
+### Tests
+
+```bat
+tests\run_tests.bat
+```
+
+No Administrator required for compare regression tests.
+
+## Settings and persistence
+
+| Item | Location |
+|------|----------|
+| GUI preferences | `%AppData%\whylag\settings.ini` |
+| Last sample snapshot | `%AppData%\whylag\last_sample.csv` (auto-saved after each sample, restored on GUI launch) |
+
+Use **Opts** in the GUI for live refresh interval and open-folder-on-export.
 
 ## CLI options
 
@@ -164,6 +181,8 @@ It traces what ETW exposes in a short sample — not a full WPA/xperf session. F
 Prebuilt binaries are attached to [GitHub Releases](https://github.com/Muhib-Beekun/whylag/releases) when tagged (`v0.3.0`, etc.). CI builds on push to `main`/`master`.
 
 The repo is currently private; a public release will ship signed binaries and a short security/limitations section in release notes.
+
+See [SECURITY.md](SECURITY.md), [CHANGELOG.md](CHANGELOG.md), and [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

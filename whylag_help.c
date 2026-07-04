@@ -61,7 +61,8 @@ static const char *WHYLAG_HELP_TEXT =
     "2. Capture   - sample during stutter (Continuous mode works well).\r\n"
     "3. Compare   - pick baseline + bad-period CSVs; look for higher max_us.\r\n"
     "4. Fix       - update or roll back the flagged driver (see table below).\r\n\r\n"
-    "Double-click any row in a results table for driver-specific detail and advice.\r\n\r\n"
+    "Double-click any row for driver detail and advice. Opts sets refresh rate and\r\n"
+    "export folder behavior. Last sample is saved to AppData and restored on launch.\r\n\r\n"
 
     "COMMON DRIVERS AND WHAT TO TRY\r\n"
     "------------------------------\r\n"

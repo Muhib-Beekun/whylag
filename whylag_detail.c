@@ -10,21 +10,21 @@
 #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
 #endif
 
-static const char *g_detail_title;
-static const char *g_detail_body;
+static const char *g_textdlg_title;
+static const char *g_textdlg_body;
 
-static LRESULT CALLBACK detail_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
+static LRESULT CALLBACK textdlg_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 {
     switch (msg) {
     case WM_CREATE: {
         BOOL dark = TRUE;
         DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &dark, sizeof(dark));
-        HWND edit = CreateWindowExA(0, "EDIT", g_detail_body,
+        HWND edit = CreateWindowExA(0, "EDIT", g_textdlg_body,
             WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_READONLY | WS_VSCROLL | ES_AUTOVSCROLL,
-            12, 12, 496, 320, hwnd, NULL, NULL, NULL);
+            12, 12, 556, 360, hwnd, NULL, NULL, NULL);
         SendMessage(edit, WM_SETFONT, (WPARAM)wl_font_ui(), FALSE);
         CreateWindowExA(0, "BUTTON", "Close", WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON,
-            418, 342, 90, 28, hwnd, (HMENU)1, NULL, NULL);
+            478, 382, 90, 28, hwnd, (HMENU)1, NULL, NULL);
         return 0;
     }
     case WM_CTLCOLOREDIT: {
@@ -43,25 +43,26 @@ static LRESULT CALLBACK detail_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp
     return DefWindowProcA(hwnd, msg, wp, lp);
 }
 
-static void show_detail_dialog(HWND parent, const char *title, const char *body)
+void whylag_show_text_dialog(HWND parent, const char *title, const char *body)
 {
+    if (!body) return;
     static int registered;
     if (!registered) {
         WNDCLASSEXA wc = {0};
         wc.cbSize = sizeof(wc);
-        wc.lpfnWndProc = detail_wndproc;
+        wc.lpfnWndProc = textdlg_wndproc;
         wc.hInstance = GetModuleHandleA(NULL);
         wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-        wc.lpszClassName = "WhyLagDetailClass";
+        wc.lpszClassName = "WhyLagTextDlgClass";
         RegisterClassExA(&wc);
         registered = 1;
     }
 
-    g_detail_title = title;
-    g_detail_body = body;
-    HWND dlg = CreateWindowExA(0, "WhyLagDetailClass", title,
+    g_textdlg_title = title ? title : "whylag";
+    g_textdlg_body = body;
+    HWND dlg = CreateWindowExA(0, "WhyLagTextDlgClass", g_textdlg_title,
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
-        CW_USEDEFAULT, CW_USEDEFAULT, 540, 420,
+        CW_USEDEFAULT, CW_USEDEFAULT, 600, 450,
         parent, NULL, GetModuleHandleA(NULL), NULL);
     if (dlg) ShowWindow(dlg, SW_SHOW);
 }
@@ -90,7 +91,8 @@ void whylag_show_item_detail(HWND parent, HWND list, int tab_index)
         int kind = tab_index;
         if (!whylag_lookup_driver(c0, &ds)) {
             snprintf(body, sizeof(body),
-                "No live stats for \"%s\".\r\nRun a sample first.\r\n", c0);
+                "Driver: %s\r\n\r\nNo stats in memory for this driver.\r\n"
+                "Run a sample or reload the last snapshot (saved automatically).\r\n", c0);
         } else {
             whylag_driver_advice(c0, advice, sizeof(advice));
             if (kind == 0) {
@@ -128,18 +130,18 @@ void whylag_show_item_detail(HWND parent, HWND list, int tab_index)
                     advice);
             }
         }
-        show_detail_dialog(parent, c0, body);
+        whylag_show_text_dialog(parent, c0, body);
     } else if (tab_index == 2) {
         snprintf(body, sizeof(body),
             "CPU: %s\r\n\r\nDPC events: %s (max %s us)\r\nISR events: %s (max %s us)\r\n\r\n"
             "If one CPU shows much higher max latency, check IRQ affinity and driver load on that core.\r\n",
             c0, c1, c2, c3, c4);
-        show_detail_dialog(parent, c0, body);
+        whylag_show_text_dialog(parent, c0, body);
     } else {
         snprintf(body, sizeof(body),
             "Process: %s\r\nPID: %s\r\nHard page faults: %s\r\n\r\n"
             "Hard faults read memory from disk mid-operation and cause multi-ms stalls.\r\n",
             c0, c1, c2);
-        show_detail_dialog(parent, c0, body);
+        whylag_show_text_dialog(parent, c0, body);
     }
 }

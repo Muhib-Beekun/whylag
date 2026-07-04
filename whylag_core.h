@@ -49,6 +49,7 @@ typedef struct {
     int duration;
     int live_refresh_ms;
     int open_folder_on_export;
+    int last_sample_elapsed_sec;
     char last_export_dir[MAX_PATH];
 } WhyLagSettings;
 
@@ -80,6 +81,10 @@ void whylag_self_check(char *buf, size_t buflen);
 void whylag_settings_load(WhyLagSettings *out);
 void whylag_settings_save(const WhyLagSettings *in);
 void whylag_open_folder_for_file(const char *path);
+void whylag_snapshot_path(char *out, size_t outlen);
+int  whylag_save_snapshot(double elapsed_sec);
+int  whylag_load_snapshot(double *elapsed_out);
+int  whylag_snapshot_available(void);
 
 /* Blocking sampling loop; returns 0 on success */
 int  whylag_run_loop(const WhyLagOptions *opts, double *elapsed_out);

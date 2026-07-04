@@ -10,6 +10,7 @@
 #include "whylag_gui_theme.h"
 #include "whylag_help.h"
 #include "whylag_detail.h"
+#include "whylag_settings_dlg.h"
 #include <commctrl.h>
 #include <commdlg.h>
 #include <windowsx.h>
@@ -44,6 +45,7 @@
 #define IDC_COMPARE     1014
 #define IDC_ELEVATE     1015
 #define IDC_WL_HELP     1026
+#define IDC_SETTINGS    1027
 #define IDC_PROGRESS    1016
 #define IDC_ELAPSED     1017
 #define IDC_HEADER      1018
@@ -105,6 +107,7 @@ static const char *btn_label_for(int id)
     case IDC_EXPORT: return "Export CSV";
     case IDC_COMPARE: return "Compare";
     case IDC_WL_HELP: return "Help";
+    case IDC_SETTINGS: return "Opts";
     case IDC_ELEVATE: return "Run as Admin";
     default:
         if (id >= IDC_TAB_DPC && id <= IDC_TAB_FAULT)
@@ -203,6 +206,7 @@ static void init_tooltips(HWND hwnd)
     add_tooltip(GetDlgItem(hwnd, IDC_STOP), "Stop the current trace session");
     add_tooltip(GetDlgItem(hwnd, IDC_EXPORT), "Save results to CSV for baseline vs bad-period comparison");
     add_tooltip(GetDlgItem(hwnd, IDC_COMPARE), "Compare two CSV files and show drivers that regressed");
+    add_tooltip(GetDlgItem(hwnd, IDC_SETTINGS), "Settings: live refresh interval, open folder on export");
     add_tooltip(GetDlgItem(hwnd, IDC_WL_HELP), "Open the full help guide (F1)");
     add_tooltip(GetDlgItem(hwnd, IDC_ELEVATE), "Relaunch with Administrator privileges");
     add_tooltip(g_elapsed, "Current sample progress");
@@ -620,6 +624,9 @@ static void on_sample_done(WPARAM failed)
 
     refresh_lists();
     update_live_ui();
+    whylag_save_snapshot(g_last_elapsed);
+    g_settings.last_sample_elapsed_sec = (int)(g_last_elapsed + 0.5);
+    whylag_settings_save(&g_settings);
     char ebuf[128];
     snprintf(ebuf, sizeof(ebuf), "Complete - %.1f sec sampled", g_last_elapsed);
     SetWindowTextA(g_elapsed, ebuf);
@@ -676,12 +683,12 @@ static void compare_csv_dialog(void)
     ofn.lpstrTitle = "Bad-period CSV (while stuttering)";
     if (!GetOpenFileNameA(&ofn)) return;
 
-    char report[4096];
+    char report[8192];
     if (whylag_compare_csv(path1, path2, report, sizeof(report)) != 0) {
         MessageBoxA(g_hwnd, "Could not read one or both CSV files.", "Compare", MB_OK | MB_ICONERROR);
         return;
     }
-    MessageBoxA(g_hwnd, report, "Baseline vs bad-period", MB_OK | MB_ICONINFORMATION);
+    whylag_show_text_dialog(g_hwnd, "Baseline vs bad-period", report);
 }
 
 static void switch_tab(int index)
@@ -712,7 +719,8 @@ static void layout_controls(int w, int h)
     MoveWindow(GetDlgItem(g_hwnd, IDC_STOP), pad + 346, y, 88, row_h, TRUE);
     MoveWindow(GetDlgItem(g_hwnd, IDC_EXPORT), pad + 446, y, 96, row_h, TRUE);
     MoveWindow(GetDlgItem(g_hwnd, IDC_COMPARE), pad + 552, y, 96, row_h, TRUE);
-    MoveWindow(GetDlgItem(g_hwnd, IDC_WL_HELP), pad + 654, y, 72, row_h, TRUE);
+    MoveWindow(GetDlgItem(g_hwnd, IDC_SETTINGS), pad + 654, y, 52, row_h, TRUE);
+    MoveWindow(GetDlgItem(g_hwnd, IDC_WL_HELP), pad + 712, y, 72, row_h, TRUE);
     if (IsWindowVisible(GetDlgItem(g_hwnd, IDC_ELEVATE)))
         MoveWindow(GetDlgItem(g_hwnd, IDC_ELEVATE), w - pad - 120, y, 120, row_h, TRUE);
     y += row_h + 12;
@@ -788,6 +796,8 @@ static LRESULT CALLBACK wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
             0, 0, 96, 32, hwnd, (HMENU)IDC_EXPORT, NULL, NULL);
         CreateWindowExA(0, "BUTTON", "Compare", WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
             0, 0, 96, 32, hwnd, (HMENU)IDC_COMPARE, NULL, NULL);
+        CreateWindowExA(0, "BUTTON", "Opts", WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
+            0, 0, 52, 32, hwnd, (HMENU)IDC_SETTINGS, NULL, NULL);
         CreateWindowExA(0, "BUTTON", "Help", WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
             0, 0, 72, 32, hwnd, (HMENU)IDC_WL_HELP, NULL, NULL);
         CreateWindowExA(0, "BUTTON", "Run as Admin", WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
@@ -867,6 +877,17 @@ static LRESULT CALLBACK wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
             set_status(scheck);
         else
             set_status("Ready. Run a baseline sample when the system feels fine.");
+
+        if (whylag_load_snapshot(&g_last_elapsed) == 0) {
+            refresh_lists();
+            update_live_ui();
+            char ebuf[128];
+            snprintf(ebuf, sizeof(ebuf), "Last sample: %.1f sec (restored)", g_last_elapsed);
+            SetWindowTextA(g_elapsed, ebuf);
+            InvalidateRect(g_elapsed, NULL, FALSE);
+        } else if (g_settings.last_sample_elapsed_sec > 0) {
+            g_last_elapsed = g_settings.last_sample_elapsed_sec;
+        }
 
         RECT rc;
         GetClientRect(hwnd, &rc);
@@ -990,6 +1011,10 @@ static LRESULT CALLBACK wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
         case IDC_STOP:  stop_sampling(); break;
         case IDC_EXPORT: export_csv_dialog(); break;
         case IDC_COMPARE: compare_csv_dialog(); break;
+        case IDC_SETTINGS:
+            whylag_show_settings_dialog(hwnd, &g_settings);
+            whylag_settings_save(&g_settings);
+            break;
         case IDC_WL_HELP: whylag_show_help(hwnd); break;
         case IDC_ELEVATE: relaunch_elevated(); break;
         case IDC_TAB_DPC: switch_tab(0); break;

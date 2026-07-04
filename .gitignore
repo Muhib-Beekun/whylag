@@ -11,6 +11,7 @@ errors.txt
 # sample exports (local captures)
 *-report.csv
 whylag-report.csv
+tests/output*.txt
 
 # local agent/session scratch (not for publish)
 .temp/

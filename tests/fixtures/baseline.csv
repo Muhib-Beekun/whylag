@@ -1,0 +1,7 @@
+sample_seconds,section,name,pid,cpu,count,max_us,avg_us,total_pct
+30.0,summary,,,,1000,,,
+30.0,summary_dpc,,,,500,,,
+30.0,summary_isr,,,,400,,,
+30.0,dpc,nvlddmkm.sys,,,10,200,20,50.0
+30.0,dpc,dxgkrnl.sys,,,5,150,30,50.0
+30.0,isr,dxgkrnl.sys,,,20,300,15,100.0

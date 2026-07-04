@@ -70,6 +70,7 @@ int main(int argc, char **argv)
     whylag_print_report(elapsed, 0);
     if (opts.csv_path)
         whylag_export_csv(elapsed, opts.csv_path);
+    whylag_save_snapshot(elapsed);
 
     return 0;
 }

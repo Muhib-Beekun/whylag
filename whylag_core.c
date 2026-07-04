@@ -807,11 +807,13 @@ void whylag_print_report(double elapsed_sec, int is_interval)
         printf("\n");
     }
 
-    printf("  Events: %llu total | DPC: %llu | ISR: %llu | PageFaults: %llu | Modules: %d\n",
+    printf("  Events: %llu total | DPC: %llu | ISR: %llu | Faults: %llu | CSwitch: %llu | Disk: %llu | Modules: %d\n",
            (unsigned long long)g_total_events,
            (unsigned long long)g_dpc_events,
            (unsigned long long)g_isr_events,
            (unsigned long long)g_hard_faults,
+           (unsigned long long)g_cswitch_events,
+           (unsigned long long)g_diskio_events,
            g_module_count);
 
     if (!is_interval)
@@ -890,7 +892,7 @@ void whylag_print_report(double elapsed_sec, int is_interval)
 
     if (!is_interval) {
         UINT64 worst_dpc = 0, worst_isr = 0;
-        const char *dpc_drv = "—", *isr_drv = "—";
+        const char *dpc_drv = "(none)", *isr_drv = "(none)";
         for (int i = 0; i < g_stats_count; i++) {
             if (g_stats[i].dpc_max_us > worst_dpc) {
                 worst_dpc = g_stats[i].dpc_max_us; dpc_drv = g_stats[i].name;
@@ -1054,18 +1056,22 @@ int whylag_run_loop(const WhyLagOptions *opts, double *elapsed_out)
         double elapsed = (double)(t_now.QuadPart - t_start.QuadPart) / g_qpc_freq.QuadPart;
 
         if (!quiet && !continuous) {
-            printf("\r  [%d/%d] DPC:%llu ISR:%llu Faults:%llu",
+            printf("\r  [%d/%d] DPC:%llu ISR:%llu F:%llu CS:%llu Dsk:%llu",
                    elapsed_sec, duration,
                    (unsigned long long)g_dpc_events,
                    (unsigned long long)g_isr_events,
-                   (unsigned long long)g_hard_faults);
+                   (unsigned long long)g_hard_faults,
+                   (unsigned long long)g_cswitch_events,
+                   (unsigned long long)g_diskio_events);
             fflush(stdout);
         } else if (!quiet && continuous) {
-            printf("\r  [%ds] DPC:%llu ISR:%llu Faults:%llu       ",
+            printf("\r  [%ds] DPC:%llu ISR:%llu F:%llu CS:%llu Dsk:%llu    ",
                    elapsed_sec,
                    (unsigned long long)g_dpc_events,
                    (unsigned long long)g_isr_events,
-                   (unsigned long long)g_hard_faults);
+                   (unsigned long long)g_hard_faults,
+                   (unsigned long long)g_cswitch_events,
+                   (unsigned long long)g_diskio_events);
             fflush(stdout);
         }
 
@@ -1137,6 +1143,48 @@ void whylag_driver_advice(const char *name, char *buf, size_t buflen)
 
 typedef struct { char name[64]; UINT64 max_us; } CompareRow;
 
+static void trim_crlf(char *s)
+{
+    size_t n = strlen(s);
+    while (n > 0 && (s[n - 1] == '\n' || s[n - 1] == '\r'))
+        s[--n] = 0;
+}
+
+static int parse_csv_data_row(const char *line, char *section, char *name,
+                              unsigned long long *count, unsigned long long *max_us,
+                              double *avg_out)
+{
+    char buf[512];
+    const char *fields[10];
+    int nf = 0;
+
+    strncpy(buf, line, sizeof(buf) - 1);
+    buf[sizeof(buf) - 1] = 0;
+    trim_crlf(buf);
+
+    char *p = buf;
+    while (nf < 10 && p && *p) {
+        fields[nf++] = p;
+        char *comma = strchr(p, ',');
+        if (comma) {
+            *comma = 0;
+            p = comma + 1;
+        } else {
+            break;
+        }
+    }
+    if (nf < 7) return 0;
+
+    strncpy(section, fields[1], 31);
+    section[31] = 0;
+    strncpy(name, fields[2], 63);
+    name[63] = 0;
+    *count = strtoull(fields[5], NULL, 10);
+    *max_us = strtoull(fields[6], NULL, 10);
+    if (avg_out && nf > 7) *avg_out = atof(fields[7]);
+    return 1;
+}
+
 static int load_compare_rows(const char *path, CompareRow *dpc, CompareRow *isr, int max, int *dn, int *in)
 {
     FILE *f = fopen(path, "r");
@@ -1146,12 +1194,9 @@ static int load_compare_rows(const char *path, CompareRow *dpc, CompareRow *isr,
     fgets(line, sizeof(line), f);
     while (fgets(line, sizeof(line), f)) {
         char section[32], name[64];
-        double sample, avg, pct;
-        unsigned long pid_u;
-        unsigned long long cpu_u, count, max_us;
-        int n = sscanf(line, "%lf,%31[^,],%63[^,],%lu,%llu,%llu,%llu,%lf,%lf",
-                       &sample, section, name, &pid_u, &cpu_u, &count, &max_us, &avg, &pct);
-        if (n < 7) continue;
+        unsigned long long count, max_us;
+        if (!parse_csv_data_row(line, section, name, &count, &max_us, NULL))
+            continue;
         if (strcmp(section, "dpc") == 0 && *dn < max) {
             strncpy(dpc[*dn].name, name, 63);
             dpc[(*dn)++].max_us = max_us;
@@ -1251,6 +1296,7 @@ void whylag_settings_load(WhyLagSettings *out)
     out->duration = GetPrivateProfileIntA("ui", "duration", out->duration, path);
     out->live_refresh_ms = GetPrivateProfileIntA("ui", "live_refresh_ms", out->live_refresh_ms, path);
     out->open_folder_on_export = GetPrivateProfileIntA("ui", "open_folder_on_export", 1, path);
+    out->last_sample_elapsed_sec = GetPrivateProfileIntA("ui", "last_sample_elapsed_sec", 0, path);
     GetPrivateProfileStringA("ui", "last_export_dir", "", out->last_export_dir, MAX_PATH, path);
 }
 
@@ -1266,7 +1312,197 @@ void whylag_settings_save(const WhyLagSettings *in)
     WritePrivateProfileStringA("ui", "live_refresh_ms", buf, path);
     snprintf(buf, sizeof(buf), "%d", in->open_folder_on_export);
     WritePrivateProfileStringA("ui", "open_folder_on_export", buf, path);
+    WritePrivateProfileStringA("ui", "open_folder_on_export", buf, path);
+    snprintf(buf, sizeof(buf), "%d", in->last_sample_elapsed_sec);
+    WritePrivateProfileStringA("ui", "last_sample_elapsed_sec", buf, path);
     WritePrivateProfileStringA("ui", "last_export_dir", in->last_export_dir, path);
+}
+
+static void appdata_whylag_dir(char *out, size_t outlen)
+{
+    char appdata[MAX_PATH];
+    if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, 0, appdata))) {
+        snprintf(out, outlen, "%s\\whylag", appdata);
+        CreateDirectoryA(out, NULL);
+    } else {
+        strncpy(out, ".", outlen - 1);
+        out[outlen - 1] = 0;
+    }
+}
+
+void whylag_snapshot_path(char *out, size_t outlen)
+{
+    char dir[MAX_PATH];
+    appdata_whylag_dir(dir, sizeof(dir));
+    snprintf(out, outlen, "%s\\last_sample.csv", dir);
+}
+
+static WhyLagDriverStats *import_find_driver(const char *name)
+{
+    for (int i = 0; i < g_stats_count; i++) {
+        if (_stricmp(g_stats[i].name, name) == 0)
+            return &g_stats[i];
+    }
+    if (g_stats_count >= MAX_DRIVERS) return NULL;
+    WhyLagDriverStats *s = &g_stats[g_stats_count++];
+    memset(s, 0, sizeof(*s));
+    strncpy(s->name, name, sizeof(s->name) - 1);
+    return s;
+}
+
+static void reset_imported_stats(void)
+{
+    EnterCriticalSection(&g_stats_lock);
+    g_stats_count = 0;
+    g_cpu_count = 0;
+    g_faults_count = 0;
+    memset(g_stats, 0, sizeof(g_stats));
+    memset(g_cpu, 0, sizeof(g_cpu));
+    memset(g_faults, 0, sizeof(g_faults));
+    LeaveCriticalSection(&g_stats_lock);
+}
+
+int whylag_save_snapshot(double elapsed_sec)
+{
+    char path[MAX_PATH];
+    whylag_snapshot_path(path, sizeof(path));
+    return whylag_export_csv(elapsed_sec, path);
+}
+
+int whylag_snapshot_available(void)
+{
+    char path[MAX_PATH];
+    whylag_snapshot_path(path, sizeof(path));
+    return GetFileAttributesA(path) != INVALID_FILE_ATTRIBUTES;
+}
+
+int whylag_load_snapshot(double *elapsed_out)
+{
+    char path[MAX_PATH];
+    whylag_snapshot_path(path, sizeof(path));
+    FILE *f = fopen(path, "r");
+    if (!f) return -1;
+
+    reset_imported_stats();
+    g_total_events = g_dpc_events = g_isr_events = g_hard_faults = 0;
+    g_cswitch_events = g_diskio_events = 0;
+
+    char line[512];
+    double sample_sec = 0;
+    fgets(line, sizeof(line), f);
+    while (fgets(line, sizeof(line), f)) {
+        char section[32], name[64];
+        unsigned long long count = 0, max_us = 0;
+        double avg = 0;
+        double sample;
+        if (sscanf(line, "%lf", &sample) == 1 && sample_sec <= 0)
+            sample_sec = sample;
+
+        if (sscanf(line, "%*[^,],%31[^,]", section) < 1)
+            continue;
+
+        if (strncmp(section, "summary", 7) == 0) {
+            unsigned long long summary_val = 0;
+            if (sscanf(line, "%*[^,],%*[^,],%*[^,],%*[^,],%*[^,],%llu", &summary_val) == 1) {
+                if (strcmp(section, "summary") == 0) g_total_events = summary_val;
+                else if (strcmp(section, "summary_dpc") == 0) g_dpc_events = summary_val;
+                else if (strcmp(section, "summary_isr") == 0) g_isr_events = summary_val;
+                else if (strcmp(section, "summary_fault") == 0) g_hard_faults = summary_val;
+                else if (strcmp(section, "summary_cswitch") == 0) g_cswitch_events = summary_val;
+                else if (strcmp(section, "summary_disk") == 0) g_diskio_events = summary_val;
+            }
+            continue;
+        }
+
+        if (!parse_csv_data_row(line, section, name, &count, &max_us, &avg))
+            continue;
+
+        EnterCriticalSection(&g_stats_lock);
+        if (strcmp(section, "dpc") == 0) {
+            WhyLagDriverStats *s = import_find_driver(name);
+            if (s) {
+                s->dpc_count = count;
+                s->dpc_max_us = max_us;
+                s->dpc_total_us = (UINT64)(avg * (double)count);
+            }
+        } else if (strcmp(section, "isr") == 0) {
+            WhyLagDriverStats *s = import_find_driver(name);
+            if (s) {
+                s->isr_count = count;
+                s->isr_max_us = max_us;
+                s->isr_total_us = (UINT64)(avg * (double)count);
+            }
+        } else if (strcmp(section, "cpu_dpc") == 0) {
+            char buf[512];
+            const char *fields[10];
+            int nf = 0;
+            strncpy(buf, line, sizeof(buf) - 1);
+            buf[sizeof(buf) - 1] = 0;
+            trim_crlf(buf);
+            char *p = buf;
+            while (nf < 10 && p && *p) {
+                fields[nf++] = p;
+                char *comma = strchr(p, ',');
+                if (comma) { *comma = 0; p = comma + 1; } else break;
+            }
+            if (nf >= 7) {
+                int cpu = atoi(fields[4]);
+                count = strtoull(fields[5], NULL, 10);
+                max_us = strtoull(fields[6], NULL, 10);
+                if (cpu >= 0 && cpu < WHYLAG_MAX_CPUS) {
+                    if (cpu >= g_cpu_count) g_cpu_count = cpu + 1;
+                    g_cpu[cpu].dpc_count = count;
+                    g_cpu[cpu].dpc_max_us = max_us;
+                }
+            }
+        } else if (strcmp(section, "cpu_isr") == 0) {
+            char buf[512];
+            const char *fields[10];
+            int nf = 0;
+            strncpy(buf, line, sizeof(buf) - 1);
+            buf[sizeof(buf) - 1] = 0;
+            trim_crlf(buf);
+            char *p = buf;
+            while (nf < 10 && p && *p) {
+                fields[nf++] = p;
+                char *comma = strchr(p, ',');
+                if (comma) { *comma = 0; p = comma + 1; } else break;
+            }
+            if (nf >= 7) {
+                int cpu = atoi(fields[4]);
+                count = strtoull(fields[5], NULL, 10);
+                max_us = strtoull(fields[6], NULL, 10);
+                if (cpu >= 0 && cpu < WHYLAG_MAX_CPUS) {
+                    if (cpu >= g_cpu_count) g_cpu_count = cpu + 1;
+                    g_cpu[cpu].isr_count = count;
+                    g_cpu[cpu].isr_max_us = max_us;
+                }
+            }
+        } else if (strcmp(section, "fault") == 0 && g_faults_count < MAX_PROCS) {
+            char buf[512];
+            const char *fields[10];
+            int nf = 0;
+            strncpy(buf, line, sizeof(buf) - 1);
+            buf[sizeof(buf) - 1] = 0;
+            trim_crlf(buf);
+            char *p = buf;
+            while (nf < 10 && p && *p) {
+                fields[nf++] = p;
+                char *comma = strchr(p, ',');
+                if (comma) { *comma = 0; p = comma + 1; } else break;
+            }
+            if (nf >= 7) {
+                WhyLagProcFaults *fp = &g_faults[g_faults_count++];
+                fp->pid = (ULONG)strtoul(fields[3], NULL, 10);
+                fp->fault_count = strtoull(fields[5], NULL, 10);
+                strncpy(fp->name, fields[2], sizeof(fp->name) - 1);
+            }
+        }
+        LeaveCriticalSection(&g_stats_lock);
+    }
+    fclose(f);
+    if (elapsed_out) *elapsed_out = sample_sec > 0 ? sample_sec : 10.0;
+    return (g_stats_count > 0 || g_dpc_events > 0 || g_isr_events > 0) ? 0 : -1;
 }
 
 void whylag_open_folder_for_file(const char *path)
