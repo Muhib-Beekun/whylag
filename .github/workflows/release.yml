@@ -23,8 +23,26 @@ jobs:
       - name: Build
         run: |
           windres whylag.rc -O coff -o whylag_res.o
-          gcc -O2 -Wall -o whylag.exe whylag.c whylag_core.c -ltdh -ladvapi32 -lshell32
+          gcc -O2 -Wall -o whylag.exe whylag.c whylag_core.c whylag_res.o -ltdh -ladvapi32 -lshell32
           gcc -O2 -Wall -o whylag-gui.exe whylag_gui.c whylag_gui_theme.c whylag_help.c whylag_detail.c whylag_settings_dlg.c whylag_core.c whylag_res.o -ltdh -ladvapi32 -lcomctl32 -lcomdlg32 -lgdi32 -luser32 -ldwmapi -luxtheme -lshell32 -mwindows
+
+      - name: Test
+        run: tests\run_tests.bat
+
+      - name: Package release
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path release | Out-Null
+          Copy-Item whylag.exe, whylag-gui.exe, LICENSE -Destination release
+          $lines = @()
+          foreach ($f in @('whylag.exe', 'whylag-gui.exe')) {
+            $hash = (Get-FileHash "release\$f" -Algorithm SHA256).Hash.ToLower()
+            $lines += "$hash  $f"
+          }
+          $lines | Set-Content -Path release\SHA256SUMS.txt -Encoding ascii
+          Copy-Item release\SHA256SUMS.txt SHA256SUMS.txt
+          $tag = "${{ github.ref_name }}"
+          Compress-Archive -Path release\* -DestinationPath "whylag-$tag-windows.zip" -Force
 
       - name: Create release
         uses: softprops/action-gh-release@v2
@@ -32,4 +50,21 @@ jobs:
           files: |
             whylag.exe
             whylag-gui.exe
+            LICENSE
+            SHA256SUMS.txt
+            whylag-${{ github.ref_name }}-windows.zip
+          body: |
+            Windows binaries for whylag ${{ github.ref_name }}.
+
+            **Run as Administrator** (ETW kernel tracing requires elevation).
+
+            | File | Purpose |
+            |------|---------|
+            | `whylag-gui.exe` | GUI with live tables, CSV export/compare, Help |
+            | `whylag.exe` | CLI for scripts and terminal use |
+            | `SHA256SUMS.txt` | Verify downloads (see [SECURITY.md](SECURITY.md)) |
+            | `whylag-${{ github.ref_name }}-windows.zip` | All of the above bundled |
+
+            Binaries are unsigned; SmartScreen may warn on first run.
+
           generate_release_notes: true

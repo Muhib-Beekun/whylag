@@ -6,7 +6,7 @@
 #ifndef WHYLAG_CORE_H
 #define WHYLAG_CORE_H
 
-#define WHYLAG_VERSION "0.3.0"
+#define WHYLAG_VERSION "0.3.1"
 
 #define WHYLAG_MAX_CPUS 256
 

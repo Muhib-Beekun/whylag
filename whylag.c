@@ -52,7 +52,7 @@ int main(int argc, char **argv)
         if (d > 0) opts.duration = d;
     }
 
-    printf("whylag %s — find out why your system is lagging\n", WHYLAG_VERSION);
+    printf("whylag %s - find out why your system is lagging\n", WHYLAG_VERSION);
     if (opts.continuous)
         printf("Continuous mode (Ctrl+C to stop, reporting every %ds)\n\n", opts.interval);
     else

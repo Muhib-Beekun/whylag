@@ -9,7 +9,7 @@ if not exist whylag.exe (
 )
 
 echo test: version
-whylag.exe -v | findstr /C:"0.3.0" >nul || set FAIL=1
+whylag.exe -v | findstr /C:"0.3.1" >nul || set FAIL=1
 
 echo test: compare detects nvlddmkm regression
 whylag.exe compare tests\fixtures\baseline.csv tests\fixtures\bad.csv > tests\output_compare.txt

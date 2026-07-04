@@ -2,6 +2,18 @@
 
 All notable changes to whylag are documented here.
 
+## [0.3.1] - 2026-07-04
+
+### Added
+- Windows `VERSIONINFO` resource (version shown in File Properties)
+- Release SHA256 checksums, LICENSE, and zip bundle on GitHub Releases
+- GUI window title shows version (`whylag 0.3.1`)
+
+### Changed
+- CLI user-facing text uses ASCII hyphens (no em dash mojibake in `cmd.exe`)
+- Release workflow runs regression tests before publishing
+- CLI binary links app icon and version resource (same as GUI)
+
 ## [0.3.0] - 2026-07-04
 
 ### Added

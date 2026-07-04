@@ -1,3 +1,32 @@
 #include <windows.h>
 
 101 ICON "whylag.ico"
+
+1 VERSIONINFO
+FILEVERSION     0,3,1,0
+PRODUCTVERSION  0,3,1,0
+FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
+FILEFLAGS       0
+FILEOS          VOS__WINDOWS32
+FILETYPE        VFT_APP
+FILESUBTYPE     VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName",      "Muhib Beekun"
+            VALUE "FileDescription",  "whylag - Windows kernel latency diagnostic"
+            VALUE "FileVersion",      "0.3.1"
+            VALUE "InternalName",       "whylag"
+            VALUE "LegalCopyright",   "MIT License"
+            VALUE "OriginalFilename", "whylag.exe"
+            VALUE "ProductName",      "whylag"
+            VALUE "ProductVersion",   "0.3.1"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

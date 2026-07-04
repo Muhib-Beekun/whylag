@@ -601,7 +601,7 @@ try_start:
 
     if (status != ERROR_SUCCESS) {
         if (status == 5)
-            fprintf(stderr, "error: access denied — run as Administrator\n");
+            fprintf(stderr, "error: access denied - run as Administrator\n");
         else
             fprintf(stderr, "error: StartTrace failed (code %lu)\n", status);
         return -1;
@@ -906,9 +906,9 @@ void whylag_print_report(double elapsed_sec, int is_interval)
         if (worst_dpc < 1000 && worst_isr < 500)
             printf("[OK] Suitable for real-time audio.\n");
         else if (worst_dpc < 5000 && worst_isr < 2000)
-            printf("[WARN] Moderate latency — may cause occasional glitches.\n");
+            printf("[WARN] Moderate latency - may cause occasional glitches.\n");
         else
-            printf("[BAD] High latency — will cause audio dropouts/stuttering.\n");
+            printf("[BAD] High latency - will cause audio dropouts/stuttering.\n");
 
         printf("    Worst DPC: %llu us (%s)\n", (unsigned long long)worst_dpc, dpc_drv);
         printf("    Worst ISR: %llu us (%s)\n", (unsigned long long)worst_isr, isr_drv);
@@ -1000,7 +1000,7 @@ static void sigint_handler(int sig) { (void)sig; g_running = 0; }
 
 void whylag_print_usage(void)
 {
-    printf("whylag %s — find out why your system is lagging\n\n", WHYLAG_VERSION);
+    printf("whylag %s - find out why your system is lagging\n\n", WHYLAG_VERSION);
     printf("Usage: whylag [OPTIONS] [DURATION]\n\n");
     printf("Options:\n");
     printf("  -c, --continuous     Run until Ctrl+C (ignore duration)\n");
@@ -1018,7 +1018,7 @@ void whylag_print_usage(void)
     printf("  whylag compare a.csv b.csv   Diff max latency between two exports\n\n");
     printf("Must be run as Administrator (ETW kernel tracing requires it).\n\n");
     printf("Reading results:\n");
-    printf("  Max(us) is the key column — worst single DPC/ISR latency in the sample.\n");
+    printf("  Max(us) is the key column - worst single DPC/ISR latency in the sample.\n");
     printf("  OK/WARN/BAD thresholds: DPC <1000/<5000 us, ISR <500/<2000 us.\n");
     printf("  Export CSV when fine, capture during stutter, diff max_us per driver.\n");
     printf("  GUI whylag-gui.exe adds Help, Compare CSVs, and live tables.\n");

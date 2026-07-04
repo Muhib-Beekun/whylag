@@ -1067,8 +1067,11 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR cmdLine, int show)
     wc.lpszClassName = "WhyLagGuiClass";
     RegisterClassExA(&wc);
 
+    char title[64];
+    snprintf(title, sizeof(title), "whylag %s", WHYLAG_VERSION);
+
     HWND hwnd = CreateWindowExA(0, wc.lpszClassName,
-        "whylag",
+        title,
         WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
         CW_USEDEFAULT, CW_USEDEFAULT, 980, 720,
         NULL, NULL, hInst, NULL);

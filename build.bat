@@ -70,14 +70,14 @@ if errorlevel 1 if not exist "whylag.ico" (
     exit /b 1
 )
 
-echo Building whylag.exe ...
-"!GCC!" -O2 -Wall -o whylag.exe whylag.c whylag_core.c -ltdh -ladvapi32 -lshell32
-if errorlevel 1 exit /b 1
-
 echo Compiling resources ...
 set "WINDRES=!BINDIR!\windres.exe"
 if not exist "!WINDRES!" set "WINDRES=windres"
 "!WINDRES!" whylag.rc -O coff -o ".temp\build\whylag_res.o"
+if errorlevel 1 exit /b 1
+
+echo Building whylag.exe ...
+"!GCC!" -O2 -Wall -o whylag.exe whylag.c whylag_core.c ".temp\build\whylag_res.o" -ltdh -ladvapi32 -lshell32
 if errorlevel 1 exit /b 1
 
 echo Building whylag-gui.exe ...

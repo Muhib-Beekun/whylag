@@ -133,8 +133,8 @@ python tools\make_icon.py
 Manual build:
 
 ```bat
-gcc -O2 -Wall -o whylag.exe whylag.c whylag_core.c -ltdh -ladvapi32 -lshell32
 windres whylag.rc -O coff -o whylag_res.o
+gcc -O2 -Wall -o whylag.exe whylag.c whylag_core.c whylag_res.o -ltdh -ladvapi32 -lshell32
 gcc -O2 -Wall -o whylag-gui.exe whylag_gui.c whylag_gui_theme.c whylag_help.c whylag_detail.c whylag_settings_dlg.c whylag_core.c whylag_res.o -ltdh -ladvapi32 -lcomctl32 -lcomdlg32 -lgdi32 -luser32 -ldwmapi -luxtheme -lshell32 -mwindows
 ```
 
@@ -178,9 +178,9 @@ A short ETW sample covers DPC, ISR, faults, and aggregate scheduler/disk pressur
 
 ## Releases
 
-Prebuilt binaries attach to [GitHub Releases](https://github.com/Muhib-Beekun/whylag/releases) when tagged (`v0.3.0`, etc.). CI builds on push to `main`/`master`.
+Prebuilt Windows binaries attach to [GitHub Releases](https://github.com/Muhib-Beekun/whylag/releases) on version tags (`v0.3.1`, etc.). Each release includes `whylag.exe`, `whylag-gui.exe`, `LICENSE`, SHA256 checksums, and a zip bundle. CI builds and runs regression tests on every push; releases run the same tests before upload.
 
-The repo is private today. A public release will ship signed binaries plus security/limitations notes in the release body.
+Run both programs **as Administrator** (ETW kernel tracing requires elevation). Binaries are unsigned; SmartScreen may warn on first run.
 
 See [SECURITY.md](SECURITY.md), [CHANGELOG.md](CHANGELOG.md), and [CONTRIBUTING.md](CONTRIBUTING.md).
 
