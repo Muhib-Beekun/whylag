@@ -20,10 +20,7 @@ jobs:
         run: echo "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin" >> $env:GITHUB_PATH
 
       - name: Build
-        run: |
-          windres whylag.rc -O coff -o whylag_res.o
-          gcc -O2 -Wall -o whylag.exe whylag.c whylag_core.c whylag_res.o -ltdh -ladvapi32 -lshell32
-          gcc -O2 -Wall -o whylag-gui.exe whylag_gui.c whylag_gui_theme.c whylag_help.c whylag_detail.c whylag_settings_dlg.c whylag_core.c whylag_res.o -ltdh -ladvapi32 -lcomctl32 -lcomdlg32 -lgdi32 -luser32 -ldwmapi -luxtheme -lshell32 -mwindows
+        run: scripts\build-binaries.bat whylag_res.o whylag.exe whylag-gui.exe
 
       - name: Test
         run: tests\run_tests.bat

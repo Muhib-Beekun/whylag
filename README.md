@@ -1,5 +1,9 @@
 # whylag
 
+<p align="center">
+  <img src="docs/whylag-cover.jpg" alt="whylag - Windows kernel latency diagnostic" width="720">
+</p>
+
 **Find out why your Windows system is lagging.**
 
 I built whylag as a lightweight Windows diagnostic. It uses built-in kernel tracing (ETW) to show which drivers and processes cause latency spikes. Run it elevated and read the report. There is no installer and no custom kernel driver.
@@ -38,7 +42,7 @@ Driver names resolve to real modules like `dxgkrnl.sys` and `nvlddmkm.sys`.
 
 **GUI** (recommended):
 
-1. Run `whylag-gui.exe` as Administrator.
+1. Run `whylag-gui.exe`. Windows shows a UAC prompt on launch (the GUI requires Administrator for ETW).
 2. Set **Duration** (default 10 s) or check **Continuous** to capture a bad period.
 3. Click **Start**. Watch live counters and tabbed results (DPC, ISR, Per-CPU, Page faults).
 4. **Double-click a row** for detail and driver-specific fix suggestions.
@@ -130,13 +134,13 @@ Regenerate the icon (optional, needs `pip install pillow`):
 python tools\make_icon.py
 ```
 
-Manual build:
+Manual build (same commands as CI):
 
 ```bat
-windres whylag.rc -O coff -o whylag_res.o
-gcc -O2 -Wall -o whylag.exe whylag.c whylag_core.c whylag_res.o -ltdh -ladvapi32 -lshell32
-gcc -O2 -Wall -o whylag-gui.exe whylag_gui.c whylag_gui_theme.c whylag_help.c whylag_detail.c whylag_settings_dlg.c whylag_core.c whylag_res.o -ltdh -ladvapi32 -lcomctl32 -lcomdlg32 -lgdi32 -luser32 -ldwmapi -luxtheme -lshell32 -mwindows
+scripts\build-binaries.bat whylag_res.o whylag.exe whylag-gui.exe
 ```
+
+Or use `build.bat`, which finds GCC, generates the icon, and handles locked GUI copies.
 
 ### Tests
 
@@ -180,7 +184,27 @@ A short ETW sample covers DPC, ISR, faults, and aggregate scheduler/disk pressur
 
 Prebuilt Windows binaries attach to [GitHub Releases](https://github.com/Muhib-Beekun/whylag/releases) on version tags (`v0.3.1`, etc.). Each release includes `whylag.exe`, `whylag-gui.exe`, `LICENSE`, SHA256 checksums, and a zip bundle. CI builds and runs regression tests on every push; releases run the same tests before upload.
 
-Run both programs **as Administrator** (ETW kernel tracing requires elevation). Binaries are unsigned; SmartScreen may warn on first run.
+Run `whylag.exe` **as Administrator** when sampling (ETW kernel tracing requires elevation). The CLI does not auto-elevate so `whylag compare` and `-v` work without admin.
+
+## Download trust (no paid certificate)
+
+Release binaries are **unsigned**. Windows SmartScreen may show "Windows protected your PC" on first download. There is no free substitute for a commercial code-signing certificate that removes that prompt immediately.
+
+Practical options:
+
+1. **Build from source** (recommended if you do not trust the download prompt):
+   ```bat
+   git clone https://github.com/Muhib-Beekun/whylag.git
+   cd whylag
+   build.bat
+   ```
+   Your locally built exe is not subject to SmartScreen for that build.
+
+2. **Verify then run once**: download from [GitHub Releases](https://github.com/Muhib-Beekun/whylag/releases), check `SHA256SUMS.txt`, then click **More info** → **Run anyway**. SmartScreen may remember the same file hash after enough users run it, but that is slow and not guaranteed.
+
+3. **Do not use self-signed certificates** to "sign" releases. They still show Unknown publisher and look worse than unsigned.
+
+Paid Authenticode (OV/EV) is the only reliable way to show a trusted publisher name on day one. whylag does not use it.
 
 See [SECURITY.md](SECURITY.md), [CHANGELOG.md](CHANGELOG.md), and [CONTRIBUTING.md](CONTRIBUTING.md).
 

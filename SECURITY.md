@@ -19,7 +19,17 @@
 1. **Download** from official [GitHub Releases](https://github.com/Muhib-Beekun/whylag/releases) only.
 2. **Run elevated only when tracing.** ETW kernel sessions require elevation.
 3. **Review CSV exports** before sharing. They contain driver names and process names from the machine that ran the sample.
-4. **Verify checksums** on release artifacts when published (SHA256 in release notes).
+4. **Verify checksums** on release artifacts (SHA256 in `SHA256SUMS.txt` on each release).
+
+## SmartScreen and unsigned binaries
+
+Official releases are not Authenticode-signed. SmartScreen may block or warn on first run. That is normal for unsigned open-source tools.
+
+- **Build from source** with `build.bat` if you prefer not to click through SmartScreen.
+- **Verify SHA256** from the release page, then use **More info** → **Run anyway** once.
+- Self-signed certificates do not help; they still show as untrusted.
+
+There is no legitimate free equivalent to a commercial code-signing certificate for instant publisher trust.
 
 ## Reporting vulnerabilities
 

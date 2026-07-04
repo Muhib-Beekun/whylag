@@ -86,6 +86,7 @@ static const char *WHYLAG_HELP_TEXT =
     "NOTES\r\n"
     "-----\r\n"
     "Administrator privileges are required for kernel ETW tracing.\r\n"
+    "The GUI prompts for UAC elevation when you launch it. Run whylag.exe elevated for CLI sampling.\r\n"
     "whylag is diagnostic only. It leaves drivers and system settings unchanged.\r\n";
 
 static HWND g_help_hwnd;

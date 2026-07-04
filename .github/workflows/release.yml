@@ -21,10 +21,7 @@ jobs:
         run: echo "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin" >> $env:GITHUB_PATH
 
       - name: Build
-        run: |
-          windres whylag.rc -O coff -o whylag_res.o
-          gcc -O2 -Wall -o whylag.exe whylag.c whylag_core.c whylag_res.o -ltdh -ladvapi32 -lshell32
-          gcc -O2 -Wall -o whylag-gui.exe whylag_gui.c whylag_gui_theme.c whylag_help.c whylag_detail.c whylag_settings_dlg.c whylag_core.c whylag_res.o -ltdh -ladvapi32 -lcomctl32 -lcomdlg32 -lgdi32 -luser32 -ldwmapi -luxtheme -lshell32 -mwindows
+        run: scripts\build-binaries.bat whylag_res.o whylag.exe whylag-gui.exe
 
       - name: Test
         run: tests\run_tests.bat
@@ -56,15 +53,15 @@ jobs:
           body: |
             Windows binaries for whylag ${{ github.ref_name }}.
 
-            **Run as Administrator** (ETW kernel tracing requires elevation).
+            **Run as Administrator** (ETW kernel tracing requires elevation). The GUI prompts UAC on launch; run the CLI elevated when sampling.
 
             | File | Purpose |
             |------|---------|
-            | `whylag-gui.exe` | GUI with live tables, CSV export/compare, Help |
+            | `whylag-gui.exe` | GUI with live tables, CSV export/compare, Help (UAC on launch) |
             | `whylag.exe` | CLI for scripts and terminal use |
             | `SHA256SUMS.txt` | Verify downloads (see [SECURITY.md](SECURITY.md)) |
             | `whylag-${{ github.ref_name }}-windows.zip` | All of the above bundled |
 
-            Binaries are unsigned; SmartScreen may warn on first run.
+            Binaries are unsigned. SmartScreen may warn on first download; verify SHA256 or build from source (see README).
 
           generate_release_notes: true

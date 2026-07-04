@@ -2,6 +2,17 @@
 
 All notable changes to whylag are documented here.
 
+## [0.3.2] - 2026-07-04
+
+### Added
+- Repository cover image (`docs/whylag-cover.jpg`) in README header
+- Shared `scripts/build-binaries.bat` used by local build and CI
+- GUI UAC manifest (`requireAdministrator` on launch; CLI unchanged)
+
+### Changed
+- README and SECURITY.md: SmartScreen guidance, build-from-source trust path
+- Release notes mention GUI UAC-on-launch and unsigned binary expectations
+
 ## [0.3.1] - 2026-07-04
 
 ### Added
