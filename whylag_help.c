@@ -72,7 +72,7 @@ static const char *WHYLAG_HELP_TEXT =
     "HDAudBus.sys  - Audio bus: update audio driver; check for IRQ/DPC conflicts.\r\n"
     "tcpip.sys     - Network: update NIC driver; disable NIC power saving.\r\n"
     "storport.sys  - Storage: check disk health; update chipset/storage drivers.\r\n"
-    "winhvr.sys    - Hyper-V: pause VMs or adjust hypervisor load if not needed.\r\n"
+    "winhvr.sys    - Hyper-V: pause VMs or reduce hypervisor load when VMs are idle.\r\n"
     "ntoskrnl.exe  - Windows kernel: high counts are normal; worry only if Max is extreme.\r\n\r\n"
 
     "CLI (whylag.exe)\r\n"
@@ -86,7 +86,7 @@ static const char *WHYLAG_HELP_TEXT =
     "NOTES\r\n"
     "-----\r\n"
     "Administrator privileges are required for kernel ETW tracing.\r\n"
-    "whylag is diagnostic only - it does not change drivers or system settings.\r\n";
+    "whylag is diagnostic only. It leaves drivers and system settings unchanged.\r\n";
 
 static HWND g_help_hwnd;
 

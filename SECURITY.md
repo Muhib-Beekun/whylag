@@ -7,24 +7,24 @@
 - Writes optional CSV exports and a local snapshot to `%AppData%\whylag\`
 - Stores GUI preferences in `%AppData%\whylag\settings.ini`
 
-## What whylag does not do
+## Boundaries
 
-- Does not install a kernel driver, service, or persistent agent
-- Does not modify system settings, drivers, or registry (except its own AppData files)
-- Does not send data over the network
-- Does not inject code into other processes
+- **User mode only.** No kernel driver, Windows service, or persistent agent is installed.
+- **Local files only.** AppData holds settings, snapshots, and exports. System drivers and registry stay untouched.
+- **Offline.** No network calls or telemetry.
+- **No injection.** Other processes are observed through ETW only.
 
 ## Running safely
 
 1. **Download** from official [GitHub Releases](https://github.com/Muhib-Beekun/whylag/releases) only.
-2. **Run elevated only when tracing** — elevation is required for ETW kernel sessions.
-3. **Review CSV exports** before sharing — they contain driver names and process names from your machine.
+2. **Run elevated only when tracing.** ETW kernel sessions require elevation.
+3. **Review CSV exports** before sharing. They contain driver names and process names from the machine that ran the sample.
 4. **Verify checksums** on release artifacts when published (SHA256 in release notes).
 
 ## Reporting vulnerabilities
 
-If you find a security issue, open a private security advisory on GitHub or contact the repository owner. Do not file public issues for exploitable bugs until patched.
+Report security issues through a private GitHub security advisory or by contacting the repository owner. Keep exploitable bugs off public issues until a fix ships.
 
 ## Limitations
 
-whylag is a diagnostic tool, not a security product. It reflects ETW visibility for a short sample window and may not capture every source of system latency.
+whylag is a latency diagnostic. It reflects ETW visibility for a short sample window. Some latency sources sit outside that window or need longer captures.

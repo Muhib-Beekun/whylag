@@ -5,7 +5,7 @@ All notable changes to whylag are documented here.
 ## [0.3.0] - 2026-07-04
 
 ### Added
-- **whylag-gui.exe** — dark-themed GUI with live DPC/ISR/CPU/fault tables
+- **whylag-gui.exe**: dark-themed GUI with live DPC/ISR/CPU/fault tables
 - Double-click row for driver detail and fix suggestions
 - CSV export, compare (GUI scrollable dialog + CLI `whylag compare`)
 - Settings dialog (Opts): live refresh interval, open folder on export
@@ -16,10 +16,6 @@ All notable changes to whylag are documented here.
 - CI build workflow and release-on-tag workflow
 - Regression tests for CSV compare (`tests/run_tests.bat`)
 - Robust CSV parser (handles empty pid/cpu columns from exports)
-- Auto snapshot restore on GUI launch (`%AppData%\\whylag\\last_sample.csv`)
-- Settings dialog (Opts): live refresh interval, open folder on export
-- Compare results in scrollable dialog (not MessageBox)
-- CLI report/progress includes CSwitch and Disk I/O counts
 
 ### Changed
 - Driver name resolution fixed (ISR opcode 67, DPC 66/68/69)

@@ -2,9 +2,9 @@
 
 **Find out why your Windows system is lagging.**
 
-whylag is a lightweight Windows diagnostic that uses built-in kernel tracing (ETW) to show which drivers and processes are causing latency spikes. No installer, no kernel driver of its own—just run elevated and read the report.
+I built whylag as a lightweight Windows diagnostic. It uses built-in kernel tracing (ETW) to show which drivers and processes cause latency spikes. Run it elevated and read the report. There is no installer and no custom kernel driver.
 
-Built while chasing real-world stutters: audio dropouts, mouse lag, and UI hitches that Task Manager never explains. When something feels wrong, whylag tells you *which* `.sys` file held the CPU too long.
+I wrote it while chasing stutters on my workstation: audio dropouts, mouse lag, and UI hitches that Task Manager never explained. When the machine feels wrong, whylag shows which `.sys` file held the CPU too long.
 
 ## What you get
 
@@ -12,14 +12,14 @@ Two programs, one engine:
 
 | Binary | Role |
 |--------|------|
-| **`whylag-gui.exe`** | Dark-themed GUI — live tables, verdict, CSV export/compare, double-click row details |
+| **`whylag-gui.exe`** | Dark-themed GUI: live tables, verdict, CSV export/compare, double-click row details |
 | **`whylag.exe`** | CLI for scripts, SSH, and quick terminal checks |
 
 Both require **Administrator** (ETW kernel sessions need elevation).
 
 ## The problem this solves
 
-Intermittent lag is maddening because the cause hides in the kernel. A driver runs too long in an interrupt handler (ISR) or deferred callback (DPC), or a process triggers hard page faults that stall the machine for milliseconds. whylag surfaces that in seconds instead of guessing from Task Manager CPU graphs.
+Intermittent lag hides in the kernel. A driver runs too long in an interrupt handler (ISR) or deferred callback (DPC), or a process triggers hard page faults that stall the machine for milliseconds. whylag surfaces that in seconds. Task Manager CPU graphs stay flat while the kernel tells the story.
 
 ## What it measures
 
@@ -28,11 +28,11 @@ Intermittent lag is maddening because the cause hides in the kernel. A driver ru
 | **DPC latency by driver** | Deferred interrupt work. Long DPCs block audio buffers, input, and the UI thread. |
 | **ISR latency by driver** | Immediate interrupt handlers at highest priority. Should stay very short. |
 | **Per-CPU breakdown** | Which logical CPU saw the worst DPC/ISR during the sample (IRQ affinity hints). |
-| **Hard page faults by process** | Memory pulled from disk mid-operation — multi-ms stalls. |
-| **Context switches** | Aggregate count during the sample — high activity can correlate with scheduler pressure. |
-| **Disk I/O events** | Kernel disk activity count — useful context when faults or storage drivers spike. |
+| **Hard page faults by process** | Memory pulled from disk mid-operation. Multi-ms stalls follow. |
+| **Context switches** | Aggregate count during the sample. High activity can correlate with scheduler pressure. |
+| **Disk I/O events** | Kernel disk activity count. Useful context when faults or storage drivers spike. |
 
-Driver names are resolved from kernel module maps, PSAPI, and ETW image-load events (not a wall of `(unknown)`).
+Driver names resolve to real modules like `dxgkrnl.sys` and `nvlddmkm.sys`.
 
 ## Quick start
 
@@ -40,7 +40,7 @@ Driver names are resolved from kernel module maps, PSAPI, and ETW image-load eve
 
 1. Run `whylag-gui.exe` as Administrator.
 2. Set **Duration** (default 10 s) or check **Continuous** to capture a bad period.
-3. Click **Start** — watch live counters and tabbed results (DPC, ISR, Per-CPU, Page faults).
+3. Click **Start**. Watch live counters and tabbed results (DPC, ISR, Per-CPU, Page faults).
 4. **Double-click a row** for detail and driver-specific fix suggestions.
 5. **Export CSV** when fine; capture again when stuttering; **Compare** the two files.
 
@@ -59,12 +59,12 @@ Press **F1** or **Help** in the GUI for the full in-app guide.
 
 ## Root-cause workflow
 
-1. **Baseline** when the system feels fine — export CSV (`whylag -o baseline.csv 30` or GUI).
-2. **Capture** during stutter — continuous mode while it happens.
-3. **Compare** — GUI **Compare CSVs**, CLI `whylag compare`, or diff `max_us` in `dpc`/`isr` rows.
-4. **Fix** — update/rollback the flagged driver, adjust power settings, disable overlays, etc.
+1. **Baseline** when the system feels fine: export CSV (`whylag -o baseline.csv 30` or GUI).
+2. **Capture** during stutter: continuous mode while it happens.
+3. **Compare**: GUI **Compare CSVs**, CLI `whylag compare`, or diff `max_us` in `dpc`/`isr` rows.
+4. **Fix**: update or roll back the flagged driver, adjust power settings, disable overlays, etc.
 
-Focus on **Max (us)** — the worst single event in the window. That is what causes audible glitches and mouse stutter.
+Focus on **Max (us)**, the worst single event in the window. That spike drives audible glitches and mouse stutter.
 
 ## Verdict thresholds
 
@@ -105,14 +105,14 @@ Double-click a driver row in the GUI for tailored advice.
 
 ## How it works
 
-whylag uses **Event Tracing for Windows (ETW)** — documented, built-in telemetry:
+whylag uses **Event Tracing for Windows (ETW)**, documented built-in telemetry:
 
 1. Starts a kernel trace session (DPC, interrupt, image load, context switch, disk I/O, hard faults).
 2. Consumes events in real time with QPC timestamps.
 3. Resolves ISR/DPC routine addresses to driver names via `NtQuerySystemInformation`, PSAPI, and ETW image loads.
 4. Aggregates per-driver, per-CPU, and per-process stats; prints a verdict.
 
-Everything runs in user mode. Nothing is installed or left running after exit. Settings (duration, export folder) are stored in `%AppData%\whylag\settings.ini`.
+Everything runs in user mode. The tool exits clean: no services left behind. Settings (duration, export folder) live in `%AppData%\whylag\settings.ini`.
 
 ## Building
 
@@ -122,7 +122,7 @@ Requires **GCC (MinGW)** and **windres** on Windows 10+.
 build.bat
 ```
 
-`build.bat` stops any running copy, compiles both binaries, and links the app icon from `whylag.rc`. If an elevated GUI is still open, the fresh build lands in `.temp\build\whylag-gui.exe` until you close the old one.
+`build.bat` stops any running copy, compiles both binaries, and links the app icon from `whylag.rc`. If an elevated GUI is still open, the fresh build lands in `.temp\build\whylag-gui.exe` until the old copy closes.
 
 Regenerate the icon (optional, needs `pip install pillow`):
 
@@ -144,7 +144,7 @@ gcc -O2 -Wall -o whylag-gui.exe whylag_gui.c whylag_gui_theme.c whylag_help.c wh
 tests\run_tests.bat
 ```
 
-No Administrator required for compare regression tests.
+Compare regression tests run without Administrator.
 
 ## Settings and persistence
 
@@ -172,18 +172,18 @@ whylag compare BASELINE.csv BAD.csv
 
 ## Scope and limits
 
-whylag is a **diagnostic tool**, not a fixer. It shows *what* spiked and *which driver* to investigate. It does not modify drivers, install services, or persist tracing after exit.
+whylag is a **diagnostic tool**. It shows *what* spiked and *which driver* to investigate. It leaves drivers, services, and tracing alone after exit.
 
-It traces what ETW exposes in a short sample — not a full WPA/xperf session. For deep dives, export CSV and compare baseline vs bad periods, or capture a longer continuous sample.
+A short ETW sample covers DPC, ISR, faults, and aggregate scheduler/disk pressure. For WPA-scale traces, export CSV and compare baseline vs bad periods, or run a longer continuous capture.
 
 ## Releases
 
-Prebuilt binaries are attached to [GitHub Releases](https://github.com/Muhib-Beekun/whylag/releases) when tagged (`v0.3.0`, etc.). CI builds on push to `main`/`master`.
+Prebuilt binaries attach to [GitHub Releases](https://github.com/Muhib-Beekun/whylag/releases) when tagged (`v0.3.0`, etc.). CI builds on push to `main`/`master`.
 
-The repo is currently private; a public release will ship signed binaries and a short security/limitations section in release notes.
+The repo is private today. A public release will ship signed binaries plus security/limitations notes in the release body.
 
 See [SECURITY.md](SECURITY.md), [CHANGELOG.md](CHANGELOG.md), and [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
