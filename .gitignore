@@ -1,0 +1,6 @@
+# lagmon build artifacts
+*.exe
+*.obj
+*.o
+output.txt
+errors.txt
