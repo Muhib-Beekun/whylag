@@ -4,3 +4,6 @@
 *.o
 output.txt
 errors.txt
+
+# local agent/session scratch (not for publish)
+.temp/

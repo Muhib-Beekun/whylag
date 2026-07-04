@@ -1,0 +1,34 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install MinGW
+        run: choco install mingw -y
+
+      - name: Add MinGW to PATH
+        run: echo "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin" >> $env:GITHUB_PATH
+
+      - name: Build
+        run: |
+          gcc -O2 -Wall -o whylag.exe whylag.c whylag_core.c -ltdh -ladvapi32
+          gcc -O2 -Wall -o whylag-gui.exe whylag_gui.c whylag_core.c -ltdh -ladvapi32 -lcomctl32 -lcomdlg32 -lgdi32 -luser32 -mwindows
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            whylag.exe
+            whylag-gui.exe
+          generate_release_notes: true

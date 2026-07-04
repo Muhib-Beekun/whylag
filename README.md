@@ -2,13 +2,13 @@
 
 **Find out why your Windows system is lagging.**
 
-A single-binary diagnostic tool that traces kernel-level latency events and tells you which drivers are responsible. No install, no custom kernel driver — just run it elevated from a terminal.
+A single-binary diagnostic tool that traces kernel-level latency events and tells you which drivers are responsible. No install, no custom kernel driver — run elevated from a terminal or use the GUI.
 
 ## The problem this solves
 
 Intermittent system lag is maddening. Audio glitches, mouse stutter, UI hitches — they come and go, and Task Manager shows nothing useful. The cause is usually buried in the kernel: a driver holding the CPU too long during an interrupt (ISR) or deferred callback (DPC), or a process triggering hard page faults that stall everything.
 
-whylag was built while chasing exactly that — audio dropouts, mouse lag, and random stutters on a multi-GPU workstation. The goal is simple: when things feel wrong, run whylag, see which driver spiked, and know where to look.
+whylag was built while chasing exactly that — audio dropouts, mouse lag, and random stutters on a multi-GPU workstation. When things feel wrong, run whylag, see which driver spiked, and know where to look.
 
 ## What it measures
 
@@ -16,56 +16,48 @@ whylag was built while chasing exactly that — audio dropouts, mouse lag, and r
 |--------|---------------|
 | **DPC latency by driver** | Deferred work scheduled by interrupts. Long DPCs block the CPU from servicing audio buffers and input. |
 | **ISR latency by driver** | Immediate interrupt handlers. Long ISRs block everything at the highest priority. |
+| **Per-CPU breakdown** | Which logical CPU saw the worst DPC/ISR latency during the sample. |
 | **Hard page faults by process** | Memory fetched from disk mid-operation. Causes multi-millisecond stalls. |
 
 ## Quick start
 
+**CLI** (requires Administrator):
+
 ```
 whylag.exe            # 10-second sample, print report
 whylag.exe 30         # 30-second sample
+whylag.exe -o baseline.csv 30   # export CSV for later comparison
 whylag.exe -c         # continuous until Ctrl+C
 whylag.exe -c -i 10   # continuous, snapshot every 10 seconds
 ```
 
-Requires **Administrator** (ETW kernel tracing needs elevation).
+**GUI** — run `whylag-gui.exe` as Administrator:
 
-## Example output
+- Set duration (or continuous), click **Start**
+- Live counters while sampling; tabbed tables for DPC, ISR, per-CPU, and page faults
+- **Export CSV** for baseline captures
+- **Compare CSVs** — pick baseline + bad-period files to see which drivers regressed
 
-```
-whylag 0.1.0 — find out why your system is lagging
-Sampling for 10 seconds (Ctrl+C to stop early)...
+## Root-cause workflow
 
-[+] 229 kernel modules loaded
-[+] Tracing active
-
-============================================================
-  WHYLAG REPORT  (10.0 seconds sampled)
-============================================================
-  Events: 192290 total | DPC: 77720 | ISR: 5060 | PageFaults: 7
-
-  DRIVER (DPC)                    Count   Max(us)   Avg(us)   Total%
-  ------------                    -----   -------   -------   ------
-  HDAudBus.sys                       85       546        18    12.1%
-  Wdf01000.sys                    17759       323         0    21.3%
-  ntoskrnl.exe                    59209       184         0    61.7%
-
-  DRIVER (ISR)                    Count   Max(us)   Avg(us)   Total%
-  ------------                    -----   -------   -------   ------
-  dxgkrnl.sys                     4045      1483        65    98.6%
-  storport.sys                    1015        50         2     1.4%
-
-  VERDICT: [WARN] Moderate latency — may cause occasional glitches.
-    Worst DPC: 546 us (HDAudBus.sys)
-    Worst ISR: 1483 us (dxgkrnl.sys)
-============================================================
-```
-
-## How to use it for root-cause analysis
-
-1. **Baseline when things feel fine** — `whylag 30` and save the output.
-2. **Capture during a bad period** — run `whylag -c -i 10` while audio/mouse/UI is stuttering.
-3. **Compare the reports** — the driver that appears in the bad capture but not the baseline (or with much higher max times) is your suspect.
+1. **Baseline when things feel fine** — `whylag -o baseline.csv 30` (or GUI → Export CSV).
+2. **Capture during a bad period** — `whylag -c -i 10` or GUI continuous mode while stuttering.
+3. **Compare** — GUI **Compare CSVs**, or diff the CSVs manually (look for higher `max_us` or new drivers in `dpc`/`isr` rows).
 4. **Fix the driver** — update, rollback, disable a feature, or adjust power settings (see table below).
+
+## CSV format
+
+Each export is one sample with rows like:
+
+```csv
+sample_seconds,section,name,pid,cpu,count,max_us,avg_us,total_pct
+30.0,dpc,HDAudBus.sys,,,85,546,18,12.1
+30.0,isr,dxgkrnl.sys,,,4045,1483,65,98.6
+30.0,cpu_dpc,CPU 0,,0,12345,892,,
+30.0,fault,chrome.exe,1234,,7,,,
+```
+
+Sections: `summary`, `dpc`, `isr`, `cpu_dpc`, `cpu_isr`, `fault`.
 
 ## Interpreting results
 
@@ -88,24 +80,33 @@ Sampling for 10 seconds (Ctrl+C to stop early)...
 
 ## How it works
 
-whylag uses **Event Tracing for Windows (ETW)** — a documented, built-in Windows API for kernel telemetry:
+whylag uses **Event Tracing for Windows (ETW)** — documented, built-in kernel telemetry:
 
 1. Starts a system trace session with DPC, interrupt, and hard-fault flags
 2. Consumes events in real-time with high-resolution QPC timestamps
 3. Resolves routine addresses to driver names via `NtQuerySystemInformation`
-4. Reports per-driver max/avg execution times and a pass/fail verdict
+4. Reports per-driver and per-CPU max/avg execution times and a pass/fail verdict
 
 No custom kernel driver is installed. Everything runs in user mode using public Windows APIs.
 
 ## Building
 
-Requires GCC (MinGW) or MSVC on Windows 8+.
+Requires GCC (MinGW) on Windows 8+.
 
-```bash
-gcc -O2 -o whylag.exe whylag.c -ltdh -ladvapi32
+```bat
+build.bat
 ```
 
-## Options
+Or manually:
+
+```bash
+gcc -O2 -o whylag.exe whylag.c whylag_core.c -ltdh -ladvapi32
+gcc -O2 -o whylag-gui.exe whylag_gui.c whylag_core.c -ltdh -ladvapi32 -lcomctl32 -lcomdlg32 -lgdi32 -luser32 -mwindows
+```
+
+Prebuilt binaries are attached to [GitHub Releases](https://github.com/Muhib-Beekun/whylag/releases) when tagged (`v0.2.0`, etc.).
+
+## CLI options
 
 ```
 whylag [OPTIONS] [DURATION]
@@ -113,6 +114,7 @@ whylag [OPTIONS] [DURATION]
   DURATION               Seconds to sample (default: 10)
   -c, --continuous       Run until Ctrl+C
   -i, --interval SEC     Report interval in continuous mode (default: 5)
+  -o, --csv FILE         Export report to CSV
   -q, --quiet            Suppress progress, only show reports
   -h, --help             Show help
   -v, --version          Show version
