@@ -23,6 +23,10 @@ Two programs, one engine:
 
 Both require **Administrator** (ETW kernel sessions need elevation).
 
+<p align="center">
+  <img src="docs/whylag-gui-screenshot.png" alt="whylag GUI after a 10-second sample: DPC drivers, verdict, and live counters" width="920">
+</p>
+
 ## The problem this solves
 
 Intermittent lag hides in the kernel. A driver runs too long in an interrupt handler (ISR) or deferred callback (DPC), or a process triggers hard page faults that stall the machine for milliseconds. whylag surfaces that in seconds. Task Manager CPU graphs stay flat while the kernel tells the story.
