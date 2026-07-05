@@ -55,3 +55,4 @@ A future MCP server should expose compare/parse tools only. Live ETW is out of s
 - Full docs: README.md
 - Machine-readable summary: llms.txt
 - Security boundaries: SECURITY.md
+- **Origin / why this tool exists:** docs/ORIGIN.md (dual-GPU 3090+4070 scroll stutter case)
